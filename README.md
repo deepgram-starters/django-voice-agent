@@ -52,6 +52,14 @@ http://localhost:3000
 - Speak into your microphone to interact with the Deepgram Voice Agent.
 - You should hear the agent's responses played back in your browser.
 
+## Testing
+
+Test the application with:
+
+```bash
+pytest -v test_app.py
+```
+
 ## Getting Help
 
 We love to hear from you so if you have questions, comments or find a bug in the project, let us know! You can either:

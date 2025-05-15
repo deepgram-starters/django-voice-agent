@@ -1,7 +1,6 @@
 import asyncio
 import os
 import logging
-from dotenv import load_dotenv
 from aiohttp import web, WSMsgType
 
 from deepgram import (
@@ -15,8 +14,7 @@ from deepgram import (
     Output,
 )
 
-load_dotenv()
-
+# DEEPGRAM_API_KEY is now sourced directly from the environment
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 
 # Configure basic logging
@@ -48,7 +46,7 @@ async def websocket_handler(request):
             options={
                 "keepalive": "true",
                 "microphone_record": "true",
-                "speaker_playback": "true", # As per app-requirements example
+                "speaker_playback": "true",
             }
         )
         deepgram: DeepgramClient = DeepgramClient(DEEPGRAM_API_KEY, config)
