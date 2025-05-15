@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Deepgram Voice Agent</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>Deepgram Voice Agent Browser Demo</h1>
+    <p>This is a demo of the Deepgram Voice Agent. It uses the <a href="https://developers.deepgram.com/reference/voice-agent-api/agent">Deepgram Voice Agent API</a>.</p>
+    <p>Please enable your microphone in the browser to start the conversation.</p>
+
+    <script>
+        console.log("Attempting to connect to WebSocket server...");
+        const socket = new WebSocket('ws://localhost:8080/ws');
+        let mediaRecorder;
+        let mediaStream;
+
+        socket.onopen = () => {
+            console.log("WebSocket connection established.");
+            console.log("Requesting microphone access...");
+
+            const audioConstraints = {
+                audio: {
+                    channelCount: 1,
+                    sampleRate: 16000,       // Commonly used for STT
+                    echoCancellation: true,  // Standard good practice, can be toggled based on testing
+                    noiseSuppression: true,  // Standard good practice, can be toggled
+                    autoGainControl: true,   // Standard good practice, can be toggled
+                    // Latency related options (might vary in support/effect by browser)
+                    // latency: 0.01,
+                    // googEchoCancellation: true, // Example uses false, but true is safer default
+                    // googNoiseSuppression: true,
+                    // googAutoGainControl: true
+                }
+            };
+
+            navigator.mediaDevices.getUserMedia(audioConstraints)
+                .then(stream => {
+                    mediaStream = stream; // Store the stream to stop tracks later
+                    console.log("Microphone access granted with constraints:", JSON.stringify(audioConstraints));
+
+                    // Log actual track settings to see what was applied
+                    const audioTracks = stream.getAudioTracks();
+                    if (audioTracks.length > 0) {
+                        console.log("Audio track settings:", JSON.stringify(audioTracks[0].getSettings()));
+                    }
+
+                    // Options for MediaRecorder - browser dependent, but good to be aware of
+                    // Forcing a mimeType can be useful if you know the server prefers a specific one
+                    // and the browser supports it. e.g., 'audio/webm;codecs=opus' or 'audio/ogg;codecs=opus'
+                    // let mediaRecorderOptions = { mimeType: 'audio/webm;codecs=opus' };
+                    // try {
+                    //     mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions);
+                    // } catch (e) {
+                    //     console.warn("Specified mimeType not supported, using browser default:", e);
+                    //     mediaRecorder = new MediaRecorder(stream);
+                    // }
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
+                            socket.send(event.data);
+                            // console.log("Sent audio data chunk to server.");
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        console.log("MediaRecorder stopped.");
+                    };
+
+                    mediaRecorder.onerror = (event) => {
+                        console.error("MediaRecorder error:", event.error || event);
+                    };
+
+                    // Start recording, sending data periodically (e.g., every 250ms)
+                    mediaRecorder.start(250);
+                    console.log("MediaRecorder started. Streaming audio to server.");
+                })
+                .catch(err => {
+                    console.error("Error accessing microphone:", err.name, err.message);
+                    alert("Error accessing microphone: " + err.message + "\nPlease ensure you grant permission and try again. Check console for more details.");
+                });
+        };
+
+        socket.onmessage = event => {
+            console.log("Message from server:", event.data);
+        };
+
+        socket.onerror = error => {
+            console.error("WebSocket error:", error);
+            alert("WebSocket connection error. Ensure the Python server (app.py) is running.");
+        };
+
+        socket.onclose = event => {
+            console.log("WebSocket connection closed:", event.code, event.reason);
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+            }
+            // Stop media tracks when WebSocket closes
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                console.log("Microphone tracks stopped.");
+            }
+            alert("WebSocket connection closed. Refresh the page to reconnect if the server is running.");
+        };
+
+        window.addEventListener('beforeunload', () => {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.close(1000, "Page unloading");
+            }
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                console.log("Microphone tracks stopped due to page unload.");
+            }
+        });
+    </script>
+</body>
+</html>

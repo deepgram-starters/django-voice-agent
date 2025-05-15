@@ -1,92 +1,89 @@
-> INSTRUCTIONS
+# Django Voice Agent Starter
 
-> 1. If your app requires an UI: Copy the entire contents of https://github.com/deepgram-starters/deepgram-starters-ui to the `./static/` folder.
-
-> 2. The configuration of the `deepgram.toml` file, is required so we can include the starter in future onboarding workflows.
-
-> 3. Consistent naming of the project repo is important. Please don't deviate from our standards. Example repo name: [language] [use case] 
-
-> 4. Use the readme template below, don't deviate from it.
-
-> 5. Use the [cursor rules](./.cursor/rules) with [Cursor](https://www.cursor.com/) to help build your starter more quickly!
----
-
-# [Language] [Usecase] Starter
-
-> Write a brief intro for this project.
+Get started using Deepgram's Voice Agent capabilities with this Python Django demo app. This application demonstrates how to integrate Deepgram's services to build a voice-controlled agent.
 
 ## What is Deepgram?
-> Please leave this section unchanged.
 
-[Deepgram’s](https://deepgram.com/) voice AI platform provides APIs for speech-to-text, text-to-speech, and full speech-to-speech voice agents. Over 200,000+ developers use Deepgram to build voice AI products and features.
+[Deepgram's](https://deepgram.com/) voice AI platform provides APIs for speech-to-text, text-to-speech, and full speech-to-speech voice agents. Over 200,000+ developers use Deepgram to build voice AI products and features.
 
 ## Sign-up to Deepgram
 
-> Please leave this section unchanged, unless providing a UTM on the URL.
-
 Before you start, it's essential to generate a Deepgram API key to use in this project. [Sign-up now for Deepgram and create an API key](https://console.deepgram.com/signup?jump=keys).
+
+## Prerequisites
+
+- Python 3.8 or higher
+- pip for package installation
+- A [Deepgram API Key](https://console.deepgram.com/signup?jump=keys)
 
 ## Quickstart
 
-> Detail the manual steps to get started.
-
-e.g.
-
-### Manual
-
 Follow these steps to get started with this starter application.
 
-#### Clone the repository
+### Clone the repository
 
-Go to GitHub and [clone the repository](https://github.com/deepgram-starters/prerecorded-node-starter).
+1. Go to Github and [clone](https://github.com/deepgram-starters/django-voice-agent.git)
 
-#### Install dependencies
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-Install the project dependencies.
+3. Set your Deepgram API key:
+```bash
+export DEEPGRAM_API_KEY=your_api_key_here
+```
+
+## Running the Application
+
+Start the application server:
 
 ```bash
-npm install
+python app.py
 ```
 
-#### Edit the config file
+Then open your browser and go to:
 
-> Config file can be any appropriate file for the framework/language. For e.g.
-> Node is using a config.json file, while Python is only use .env files
-
-Copy the code from `sample.env` and create a new file called `.env`. Paste in the code and enter your API key you generated in the [Deepgram console](https://console.deepgram.com/).
-
-```json
-DEEPGRAM_API_KEY=%api_key%
+```
+http://localhost:3000
 ```
 
-#### Run the application
+- Allow microphone access when prompted.
+- Speak into your microphone to interact with the Deepgram Voice Agent.
+- You should hear the agent's responses played back in your browser.
 
-> If your starter has a UI, it must always run on port 8080
+## Testing
 
-The `dev` script will run a web and API server concurrently. Once running, you can [access the application in your browser](http://localhost:8080/).
+Test the application with:
 
 ```bash
-npm start
+pytest -v test_app.py
 ```
-
-## Issue Reporting
-
-If you have found a bug or if you have a feature request, please report them at this repository issues section. Please do not report security vulnerabilities on the public GitHub issue tracker. The [Security Policy](./SECURITY.md) details the procedure for contacting Deepgram.
 
 ## Getting Help
 
 We love to hear from you so if you have questions, comments or find a bug in the project, let us know! You can either:
 
-> be sure to set the repo-name in the issue URL.
-
-- [Open an issue in this repository](https://github.com/deepgram-starters/{repo-name]/issues/new)
+- [Open an issue in this repository](https://github.com/deepgram-starters/django-voice-agent/issues/new)
 - [Join the Deepgram Github Discussions Community](https://github.com/orgs/deepgram/discussions)
-- [Join the Deepgram Discord Community](https://discord.gg/xWRaCDBtW4)
+- [Join the Deepgram Discord Community](https://discord.gg/deepgram)
+
+## Contributing
+
+Contributions are welcome! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for more details on how to submit pull requests, report issues, and suggest enhancements.
+
+## Code of Conduct
+
+This project and everyone participating in it is governed by the [Deepgram Code of Conduct](./CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+
+## Security
+
+If you discover a security vulnerability, please follow our [Security Policy](./SECURITY.md) to report it. Please do not report security vulnerabilities on the public GitHub issue tracker.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
 ## Author
 
 [Deepgram](https://deepgram.com)
-
-## License
-
-This project is licensed under the MIT license. See the [LICENSE](./LICENSE) file for more info.
