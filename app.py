@@ -11,6 +11,8 @@ from deepgram import (
     SettingsOptions,
     FunctionCallRequest,
     FunctionCallResponse,
+    Input,
+    Output,
 )
 
 load_dotenv()
@@ -45,13 +47,55 @@ async def websocket_handler(request):
         config: DeepgramClientOptions = DeepgramClientOptions(
             options={
                 "keepalive": "true",
-                # "microphone_record": "true", # Not needed here as browser sends audio
+                "microphone_record": "true",
                 "speaker_playback": "true", # As per app-requirements example
             }
         )
         deepgram: DeepgramClient = DeepgramClient(DEEPGRAM_API_KEY, config)
         dg_connection = deepgram.agent.websocket.v("1")
         logger.info("Deepgram client configured and WebSocket connection object created.")
+
+              # Configure and start Deepgram connection
+        options: SettingsOptions = SettingsOptions()
+
+        # Configure audio input settings
+        options.audio.input = Input(
+            encoding="linear16",
+            sample_rate=16000  # Match the output sample rate
+        )
+
+        # Configure audio output settings
+        options.audio.output = Output(
+            encoding="linear16",
+            sample_rate=16000,
+            container="none"
+        )
+
+        # LLM provider configuration
+        options.agent.think.provider.type = "open_ai"
+        options.agent.think.provider.model = "gpt-4o-mini"
+        options.agent.think.prompt = (
+            "You are a helpful voice assistant created by Deepgram. "
+            "Your responses should be friendly, human-like, and conversational. "
+            "Always keep your answers concise—1-2 sentences, no more than 120 characters.\n\n"
+            "When responding to a user\'s message, follow these guidelines:\n"
+            "- If the user\'s message is empty, respond with an empty message.\n"
+            "- Ask follow-up questions to engage the user, but only one question at a time.\n"
+            "- Keep your responses unique and avoid repetition.\n"
+            "- If a question is unclear or ambiguous, ask for clarification before answering.\n"
+            "- If asked about your well-being, provide a brief response about how you\'re feeling.\n\n"
+            "Remember that you have a voice interface. You can listen and speak, and all your "
+            "responses will be spoken aloud."
+        )
+
+        # Deepgram provider configuration
+        options.agent.listen.provider.keyterms = ["hello", "goodbye"]
+        options.agent.listen.provider.model = "nova-3"
+        options.agent.listen.provider.type = "deepgram"
+        options.agent.speak.provider.type = "deepgram"
+
+        # Sets Agent greeting
+        options.agent.greeting = "Hello! I\'m your Deepgram voice assistant. How can I help you today?"
 
         # Define Deepgram event handlers
         def on_open(self, open_event, **kwargs):
@@ -127,16 +171,6 @@ async def websocket_handler(request):
         dg_connection.on(AgentWebSocketEvents.Close, on_close)
         dg_connection.on(AgentWebSocketEvents.Error, on_error)
         dg_connection.on(AgentWebSocketEvents.Unhandled, on_unhandled)
-
-        # Configure and start Deepgram connection
-        options: SettingsOptions = SettingsOptions()
-        # These are example settings, adjust as needed
-        options.agent.think.provider.type = "open_ai" # or other providers
-        options.agent.think.provider.model = "gpt-4o-mini"
-        options.agent.think.prompt = "You are a helpful and concise AI assistant."
-        options.greeting = "Hello! How can I help you today?" # Initial greeting from agent
-        options.agent.listen.provider.model = "nova-2" # Or other models
-        options.language = "en"
 
         logger.info("Starting Deepgram connection...")
         if not dg_connection.start(options):
