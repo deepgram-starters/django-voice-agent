@@ -3,13 +3,10 @@
 Get started using Deepgram's Voice Agent capabilities with this Python Django demo app. This application demonstrates how to integrate Deepgram's services to build a voice-controlled agent.
 
 ## What is Deepgram?
-> Please leave this section unchanged.
 
 [Deepgram's](https://deepgram.com/) voice AI platform provides APIs for speech-to-text, text-to-speech, and full speech-to-speech voice agents. Over 200,000+ developers use Deepgram to build voice AI products and features.
 
 ## Sign-up to Deepgram
-
-> Please leave this section unchanged, unless providing a UTM on the URL.
 
 Before you start, it's essential to generate a Deepgram API key to use in this project. [Sign-up now for Deepgram and create an API key](https://console.deepgram.com/signup?jump=keys).
 
@@ -23,57 +20,43 @@ Before you start, it's essential to generate a Deepgram API key to use in this p
 
 Follow these steps to get started with this starter application.
 
-### 1. Clone the repository
+### Clone the repository
 
-```bash
-git clone https://github.com/deepgram-starters/django-voice-agent.git
-cd django-voice-agent
-```
-(Assuming `django-voice-agent` is the correct repository name, please update if different)
+1. Go to Github and [clone](https://github.com/deepgram-starters/django-voice-agent.git)
 
-### 2. Install dependencies
-
-Install the project dependencies using pip:
-
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure your environment
+3. Set your Deepgram API key:
+```bash
+export DEEPGRAM_API_KEY=your_api_key_here
+```
 
-Copy the `sample.env` file to a new file named `.env`:
+## Running the Application
+
+Start the application server:
 
 ```bash
-cp sample.env .env
+python app.py
 ```
 
-Open the `.env` file and add your Deepgram API Key:
+Then open your browser and go to:
 
 ```
-DEEPGRAM_API_KEY=YOUR_DEEPGRAM_API_KEY_HERE
-# Add any other environment variables required by your Django application
+http://localhost:3000
 ```
 
-### 4. Run the application
-
-Start the Django development server:
-
-```bash
-python manage.py runserver 8080
-```
-Or, if you are using the `flask run` command from `deepgram.toml` (though this is a Django app):
-```bash
-flask run -p 8080
-```
-(Note: The `deepgram.toml` specifies `flask run -p 8080`. For a Django app, `python manage.py runserver 8080` is standard. Please clarify which is correct if needed.)
-
-Once running, you can [access the application in your browser](http://localhost:8080/).
+- Allow microphone access when prompted.
+- Speak into your microphone to interact with the Deepgram Voice Agent.
+- You should hear the agent's responses played back in your browser.
 
 ## Getting Help
 
 We love to hear from you so if you have questions, comments or find a bug in the project, let us know! You can either:
 
-- [Open an issue in this repository](https://github.com/deepgram-starters/django-voice-agent/issues/new) (Update `django-voice-agent` if your repository name is different)
+- [Open an issue in this repository](https://github.com/deepgram-starters/django-voice-agent/issues/new)
 - [Join the Deepgram Github Discussions Community](https://github.com/orgs/deepgram/discussions)
 - [Join the Deepgram Discord Community](https://discord.gg/deepgram)
 
