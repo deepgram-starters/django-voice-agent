@@ -45,7 +45,7 @@ python app.py
 Then open your browser and go to:
 
 ```
-http://localhost:3000
+http://localhost:8080
 ```
 
 - Allow microphone access when prompted.
