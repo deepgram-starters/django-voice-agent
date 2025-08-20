@@ -16,6 +16,21 @@ alwaysApply: false
 - MUST get API keys and other sensitive config from a ENVIRONMENT VARIABLE set in terminal
 - MUST provide help code comments explaining the primary functions of the app
 - MUST be able to use the Deepgram Voice Agent API
+- MUST use Django Framework
+
+Possible Packages to use:
+
+```python
+django>=4.2
+channels>=4.0
+deepgram-sdk>=4.8.1
+python-dotenv>=1.0.0
+django-cors-headers>=4.0
+daphne>=4.0.0
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-django>=4.5.0
+```
 
 ## App Requirements:
 - MUST launch a web server that can act as a basic proxy to the agent

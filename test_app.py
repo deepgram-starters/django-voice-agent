@@ -1,40 +1,31 @@
 import pytest
 import asyncio
-from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+import os
 from unittest.mock import patch, MagicMock
+from django.test import TestCase
+from channels.testing import WebsocketCommunicator
+from channels.db import database_sync_to_async
 
 # Mock DEEPGRAM_API_KEY before importing app or its components that might use it
-import os
 os.environ["DEEPGRAM_API_KEY"] = "test_api_key"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing"
+os.environ["DEBUG"] = "True"
 
-# It's common to refactor aiohttp app setup into a function for testability
-# If your app.py doesn't have `create_app()`, we'll need to adjust it or this test structure.
-# For now, let's assume `app.py` will be modified to have:
-# async def create_app():
-#     app = web.Application()
-#     # ... (add routes, etc.)
-#     return app
-
-class TestVoiceAgentServer(AioHTTPTestCase):
-    async def get_application(self):
-        """
-        Override to return the aiohttp.web.Application instance.
-        """
-        # We need to ensure DEEPGRAM_API_KEY is set before app logic runs
+class TestVoiceAgentServer(TestCase):
+    """Test cases for the Django Voice Agent server."""
+    
+    def setUp(self):
+        """Set up test environment."""
+        # Ensure environment variables are set for testing
         if not os.getenv("DEEPGRAM_API_KEY"):
             os.environ["DEEPGRAM_API_KEY"] = "mock_deepgram_api_key_for_testing"
 
-        # Dynamically import app components after setting env var
-        # and potentially after patching DeepgramClient if needed for deeper tests.
-        from app import serve_index, websocket_handler
+    @database_sync_to_async
+    def test_index_view(self):
+        """Test that the index view serves the HTML file."""
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
 
-        app = web.Application()
-        app.router.add_get('/', serve_index)
-        app.router.add_get('/ws', websocket_handler)
-        return app
-
-    @unittest_run_loop
     async def test_websocket_connection(self):
         """
         Tests if a WebSocket client can successfully connect to the /ws endpoint.
@@ -44,21 +35,20 @@ class TestVoiceAgentServer(AioHTTPTestCase):
             # Configure the mock for dg_connection.start() to return True
             mock_dg_instance = MockDeepgramClient.return_value
             mock_dg_connection = MagicMock()
-            mock_dg_connection.start.return_value = True # Simulate successful start
+            mock_dg_connection.start.return_value = True  # Simulate successful start
             mock_dg_instance.agent.websocket.v.return_value = mock_dg_connection
 
-            async with self.client.ws_connect('/ws') as ws:
-                self.assertEqual(ws.closed, False, "WebSocket connection should be open.")
+            # Import the consumer after mocking
+            from app import VoiceAgentConsumer
+            
+            communicator = WebsocketCommunicator(VoiceAgentConsumer.as_asgi(), "/ws")
+            connected, subprotocol = await communicator.connect()
+            
+            self.assertTrue(connected, "WebSocket connection should be established")
+            
+            # Clean up
+            await communicator.disconnect()
 
-                # Optional: Check for an initial message from server if your app sends one upon connection
-                # For example, if Deepgram agent sends a welcome message that gets logged or proxied.
-                # This current app.py doesn't directly proxy DG's welcome to browser client.
-
-                # Close the WebSocket connection from the client side for cleanup
-                await ws.close()
-            self.assertEqual(ws.closed, True, "WebSocket connection should be closed after test.")
-
-    @unittest_run_loop
     async def test_deepgram_agent_creation_and_start(self):
         """
         Tests that the Deepgram agent connection is attempted and started successfully (mocked).
@@ -69,16 +59,19 @@ class TestVoiceAgentServer(AioHTTPTestCase):
             mock_dg_connection.start.return_value = True  # Simulate successful start
             mock_dg_instance.agent.websocket.v.return_value = mock_dg_connection
 
-            async with self.client.ws_connect('/ws') as ws:
-                # The connection itself and mock_dg_connection.start being called (implicitly by ws_connect)
-                # is the primary check here. If start wasn't called or returned False and was handled,
-                # the ws might close or an error might be logged (which could be asserted too).
-                self.assertFalse(ws.closed, "WebSocket should remain open if Deepgram agent starts.")
-                mock_dg_connection.start.assert_called_once()
-
+            # Import the consumer after mocking
+            from app import VoiceAgentConsumer
+            
+            communicator = WebsocketCommunicator(VoiceAgentConsumer.as_asgi(), "/ws")
+            connected, subprotocol = await communicator.connect()
+            
+            self.assertTrue(connected, "WebSocket should remain open if Deepgram agent starts.")
+            mock_dg_connection.start.assert_called_once()
+            
+            # Close the connection
+            await communicator.disconnect()
+            
             # Ensure finish is called on the Deepgram connection when the ws closes
-            # This depends on how your app.py's finally block is structured.
-            # Assuming dg_connection.finish() is called.
             mock_dg_connection.finish.assert_called_once()
 
     @unittest_run_loop
