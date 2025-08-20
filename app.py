@@ -1,5 +1,14 @@
 import os
 import logging
+import django
+from django.conf import settings
+from django.core.wsgi import get_wsgi_application
+from django.core.asgi import get_asgi_application
+from django.http import FileResponse, Http404
+from django.urls import path
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.generic.websocket import AsyncWebsocketConsumer
+
 
 from deepgram import (
     DeepgramClient,
@@ -49,20 +58,9 @@ if not settings.configured:
     django.setup()
 
 # ============================================================================
-# DJANGO IMPORTS & CONFIGURATION
+# API KEY CONFIGURATION
 # ============================================================================
 
-import django
-from django.conf import settings
-from django.core.wsgi import get_wsgi_application
-from django.core.asgi import get_asgi_application
-from django.http import FileResponse, Http404
-from django.urls import path
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.generic.websocket import AsyncWebsocketConsumer
-
-
-# DEEPGRAM_API_KEY is sourced directly from the environment
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
 
 # Configure basic logging
@@ -118,6 +116,14 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
         await self.accept()
         logger.info("Browser WebSocket connection established.")
 
+        # Check API key after accepting connection
+        if not DEEPGRAM_API_KEY:
+            logger.error("DEEPGRAM_API_KEY not set. Cannot establish voice agent connection.")
+            await self.close(code=4001)
+            return
+
+        logger.info(f"Using Deepgram API key: {DEEPGRAM_API_KEY[:8]}...")  # Show first 8 chars for verification
+
         try:
             # Configure Deepgram client
             config: DeepgramClientOptions = DeepgramClientOptions(
@@ -169,6 +175,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
             options.agent.listen.provider.model = "nova-3"
             options.agent.listen.provider.type = "deepgram"
             options.agent.speak.provider.type = "deepgram"
+            options.agent.speak.provider.model = "aura-asteria-en"  # Required model field
 
             # Sets Agent greeting
             options.agent.greeting = "Hello! I\'m your Deepgram voice assistant. How can I help you today?"
@@ -198,7 +205,20 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
                 logger.info(f"Deepgram Settings Applied: {settings_applied}")
 
             def on_conversation_text(self, conversation_text, **kwargs):
-                logger.info(f"Deepgram Conversation Text: {conversation_text}")
+                try:
+                    # Try to extract clean text from the conversation_text object
+                    if hasattr(conversation_text, 'raw') and conversation_text.raw:
+                        import json
+                        parsed = json.loads(conversation_text.raw)
+                        if 'content' in parsed:
+                            logger.info(f"💬 {parsed['role'].title()}: {parsed['content']}")
+                        else:
+                            logger.info(f"💬 Conversation: {parsed}")
+                    else:
+                        logger.info(f"💬 Conversation Text: {conversation_text}")
+                except Exception:
+                    # Fallback to original logging if parsing fails
+                    logger.info(f"💬 Conversation Text: {conversation_text}")
 
             def on_user_started_speaking(self, user_started_speaking, **kwargs):
                 logger.info(f"Deepgram User Started Speaking: {user_started_speaking}")
@@ -209,8 +229,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
             def on_function_call_request(self, function_call_request: FunctionCallRequest, **kwargs):
                 logger.info(f"Deepgram Function Call Request: {function_call_request}")
                 try:
-                    # Example: Respond to a function call.
-                    # You might want to implement more sophisticated logic here.
+
                     response = FunctionCallResponse(
                         function_call_id=function_call_request.function_call_id,
                         output=f"Function call '{function_call_request.name}' processed successfully with args: {function_call_request.arguments}",
@@ -233,7 +252,20 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
                 logger.error(f"Deepgram Error: {error}")
 
             def on_unhandled(self, unhandled, **kwargs):
-                logger.warning(f"Deepgram Unhandled Event: {unhandled}")
+                # TEMPORARY: Handle History events until SDK release includes proper History handler
+                try:
+                    if hasattr(unhandled, 'raw') and unhandled.raw:
+                        import json
+                        parsed = json.loads(unhandled.raw)
+                        if parsed.get('type') == 'History' and 'content' in parsed:
+                            # Handle History events as conversation history
+                            logger.info(f"📜 {parsed['role'].title()}: {parsed['content']}")
+                            return
+                except Exception:
+                    pass
+
+                # Actual unhandled events that we don't know how to parse
+                logger.warning(f"⚠️  Unhandled Event: {unhandled}")
 
             # Register event handlers
             self.dg_connection.on(AgentWebSocketEvents.Open, on_open)
@@ -241,6 +273,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
             self.dg_connection.on(AgentWebSocketEvents.Welcome, on_welcome)
             self.dg_connection.on(AgentWebSocketEvents.SettingsApplied, on_settings_applied)
             self.dg_connection.on(AgentWebSocketEvents.ConversationText, on_conversation_text)
+
             self.dg_connection.on(AgentWebSocketEvents.UserStartedSpeaking, on_user_started_speaking)
             self.dg_connection.on(AgentWebSocketEvents.AgentThinking, on_agent_thinking)
             self.dg_connection.on(AgentWebSocketEvents.FunctionCallRequest, on_function_call_request)
@@ -319,23 +352,46 @@ def main():
         logger.error("DEEPGRAM_API_KEY environment variable not set. Please set it and try again.")
         return
 
-    import daphne.server
+    import signal
+    import sys
+    from daphne.server import Server
+    from daphne.endpoints import build_endpoint_description_strings
 
     logger.info("Starting Django voice agent server on http://localhost:8080")
     logger.info("Open index.html in your browser to interact.")
     logger.info("Press Ctrl+C to stop the server.")
 
+    # Create server instance
+    endpoints = build_endpoint_description_strings(host="127.0.0.1", port=8080)
+    server = Server(
+        application=application,
+        endpoints=endpoints,
+        verbosity=1,
+        server_name="django-voice-agent",
+    )
+
+    # Set up signal handlers for clean shutdown
+    def signal_handler(signum, frame):
+        logger.info("Received shutdown signal, stopping server...")
+        try:
+            server.stop()
+        except:
+            pass
+        logger.info("Server shutdown complete.")
+        os._exit(0)  # Force exit instead of sys.exit()
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     # Run the server using Daphne (ASGI server for Django Channels)
     try:
-        daphne.server.run(
-            application,
-            endpoints=['tcp:port=8080:interface=127.0.0.1'],
-            verbosity=1
-        )
+        server.run()
     except KeyboardInterrupt:
         logger.info("Server stopped by user.")
     except Exception as e:
         logger.error(f"Server error: {e}")
+    finally:
+        logger.info("Server shutdown complete.")
 
 
 if __name__ == "__main__":

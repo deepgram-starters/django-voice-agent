@@ -13,7 +13,7 @@ os.environ["DEBUG"] = "True"
 
 class TestVoiceAgentServer(TestCase):
     """Test cases for the Django Voice Agent server."""
-    
+
     def setUp(self):
         """Set up test environment."""
         # Ensure environment variables are set for testing
@@ -40,12 +40,12 @@ class TestVoiceAgentServer(TestCase):
 
             # Import the consumer after mocking
             from app import VoiceAgentConsumer
-            
+
             communicator = WebsocketCommunicator(VoiceAgentConsumer.as_asgi(), "/ws")
             connected, subprotocol = await communicator.connect()
-            
+
             self.assertTrue(connected, "WebSocket connection should be established")
-            
+
             # Clean up
             await communicator.disconnect()
 
@@ -61,16 +61,16 @@ class TestVoiceAgentServer(TestCase):
 
             # Import the consumer after mocking
             from app import VoiceAgentConsumer
-            
+
             communicator = WebsocketCommunicator(VoiceAgentConsumer.as_asgi(), "/ws")
             connected, subprotocol = await communicator.connect()
-            
+
             self.assertTrue(connected, "WebSocket should remain open if Deepgram agent starts.")
             mock_dg_connection.start.assert_called_once()
-            
+
             # Close the connection
             await communicator.disconnect()
-            
+
             # Ensure finish is called on the Deepgram connection when the ws closes
             mock_dg_connection.finish.assert_called_once()
 
