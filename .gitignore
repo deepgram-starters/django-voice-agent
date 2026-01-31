@@ -1,25 +1,57 @@
-# environment artifacts
-.venv
-.env
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
 venv/
-venv.bak/
-.vscode/
-.DS_Store
-Pipfile
-Pipfile.lock
-
-# python artifacts
-__pycache__
-*.egg-info
+ENV/
+build/
+develop-eggs/
 dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 .mypy_cache/
 .pytest_cache/
 
-# build
-build/
-poetry.lock
-dist
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
 
-# examples
+# Environment
+.env
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+poetry.lock
+Pipfile
+Pipfile.lock
+
+# Examples
 chatlog.txt
 output_*.wav

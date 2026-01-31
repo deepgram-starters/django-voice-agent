@@ -1,100 +1,103 @@
 # Django Voice Agent Starter
 
-Get started using Deepgram's Voice Agent capabilities with this Python Django demo app. This application demonstrates how to integrate Deepgram's services to build a voice-controlled agent.
+Conversational voice agent powered by Deepgram with Django Channels.
 
-## What is Deepgram?
+## Features
 
-[Deepgram's](https://deepgram.com/) voice AI platform provides APIs for speech-to-text, text-to-speech, and full speech-to-speech voice agents. Over 200,000+ developers use Deepgram to build voice AI products and features.
-
-## Sign-up to Deepgram
-
-Before you start, it's essential to generate a Deepgram API key to use in this project. [Sign-up now for Deepgram and create an API key](https://console.deepgram.com/signup?jump=keys).
+- Real-time voice conversation via WebSocket
+- Speech-to-text (STT) and text-to-speech (TTS) streaming
+- Minimal Django setup with no database
+- Django Channels for WebSocket support
+- Simple metadata API endpoint
 
 ## Prerequisites
 
-- Python 3.8 or higher
-- pip for package installation
-- A [Deepgram API Key](https://console.deepgram.com/signup?jump=keys)
+- Python 3.8+
+- Deepgram API key ([get one here](https://console.deepgram.com/signup))
 
-## Quickstart
+## Setup
 
-Follow these steps to get started with this starter application.
-
-### Clone the repository
-
-1. Go to Github and [clone](https://github.com/deepgram-starters/django-voice-agent.git)
-
-2. Install dependencies:
+1. Clone the repository:
 ```bash
+git clone https://github.com/deepgram-starters/django-voice-agent.git
+cd django-voice-agent
+```
+
+2. Initialize and update the frontend submodule:
+```bash
+git submodule init
+git submodule update
+```
+
+3. Create a virtual environment and install dependencies:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Set your Deepgram API key:
+4. Create a `.env` file with your Deepgram API key:
 ```bash
-export DEEPGRAM_API_KEY=your_api_key_here
+cp .env.example .env
+# Edit .env and add your DEEPGRAM_API_KEY
 ```
 
 ## Running the Application
 
-Start the application server:
+Start the Django development server with Daphne (ASGI server):
 
 ```bash
-python app.py
+daphne -b 0.0.0.0 -p 8000 config.asgi:application
 ```
 
-Then open your browser and go to:
-
-```
-http://localhost:8080
-```
-
-- Allow microphone access when prompted.
-- Speak into your microphone to interact with the Deepgram Voice Agent.
-- You should hear the agent's responses played back in your browser.
-
-## Using Cursor & MDC Rules
-
-This application can be modify as needed by using the [app-requirements.mdc](.cursor/rules/app-requirements.mdc) file. This file allows you to specify various settings and parameters for the application in a structured format that can be use along with [Cursor's](https://www.cursor.com/) AI Powered Code Editor.
-
-### Using the `app-requirements.mdc` File
-
-1. Clone or Fork this repo.
-2. Modify the `app-requirements.mdc`
-3. Add the necessary configuration settings in the file.
-4. You can refer to the MDC file used to help build this starter application by reviewing  [app-requirements.mdc](.cursor/rules/app-requirements.mdc)
-
-## Testing
-
-Test the application with:
+Or use the Django development server:
 
 ```bash
-pytest -v test_app.py
+python manage.py runserver
 ```
 
-## Getting Help
+The application will be available at `http://localhost:8000`
 
-We love to hear from you so if you have questions, comments or find a bug in the project, let us know! You can either:
+## API Endpoints
 
-- [Open an issue in this repository](https://github.com/deepgram-starters/django-voice-agent/issues/new)
-- [Join the Deepgram Github Discussions Community](https://github.com/orgs/deepgram/discussions)
-- [Join the Deepgram Discord Community](https://discord.gg/deepgram)
+### HTTP Endpoints
 
-## Contributing
+- `GET /api/metadata` - Get application metadata
 
-Contributions are welcome! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for more details on how to submit pull requests, report issues, and suggest enhancements.
+### WebSocket Endpoints
 
-## Code of Conduct
+- `ws://localhost:8000/agent/stream` - Voice agent stream
+  1. Connect to WebSocket
+  2. Send configuration as JSON: `{"stt_model": "nova-2", "tts_model": "aura-asteria-en", "language": "en"}`
+  3. Send audio data as binary frames (user speech)
+  4. Receive audio data as binary frames (agent speech)
 
-This project and everyone participating in it is governed by the [Deepgram Code of Conduct](./CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+## Project Structure
 
-## Security
+```
+django-voice-agent/
+├── config/              # Django configuration
+│   ├── settings.py      # Minimal settings (no database)
+│   ├── urls.py          # HTTP URL routing
+│   ├── asgi.py          # ASGI config with Channels
+│   └── wsgi.py          # WSGI config
+├── starter/             # Main application
+│   ├── views.py         # HTTP views
+│   ├── urls.py          # HTTP URL patterns
+│   ├── consumers.py     # WebSocket consumers
+│   └── routing.py       # WebSocket URL patterns
+├── frontend/            # Frontend (git submodule)
+├── manage.py            # Django management script
+├── requirements.txt     # Python dependencies
+└── deepgram.toml        # Application metadata
+```
 
-If you discover a security vulnerability, please follow our [Security Policy](./SECURITY.md) to report it. Please do not report security vulnerabilities on the public GitHub issue tracker.
+## Learn More
+
+- [Deepgram API Documentation](https://developers.deepgram.com/)
+- [Django Channels Documentation](https://channels.readthedocs.io/)
+- [Django Documentation](https://docs.djangoproject.com/)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
-## Author
-
-[Deepgram](https://deepgram.com)
+MIT License - see LICENSE file for details

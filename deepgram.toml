@@ -1,13 +1,15 @@
 [meta]
-title = "Django Agent Starter"
-description = "Get started using Deepgram's Transcription with this Django demo app"
-author = "Deepgram DX Team <devrel@deepgram.com> (https://developers.deepgram.com)"
-useCase = "Voice Agent"
-language = "Python"
-framework = "Django"
+name = "Django Voice Agent"
+description = "Conversational voice agent powered by Deepgram with Django Channels"
+version = "2.0.0"
 
-[build]
-command = "pip install -r requirements.txt"
+[meta.categories]
+usecase = ["voice-agent"]
+method = ["streaming"]
 
-[post-build]
-message = "Run `python app.py` to get up and running."
+[meta.features]
+languages = ["python"]
+keywords = ["django", "websocket", "voice-agent", "speech-to-text", "text-to-speech", "deepgram-api", "channels"]
+
+[meta.configuration]
+repository = "https://github.com/deepgram-starters/django-voice-agent"
