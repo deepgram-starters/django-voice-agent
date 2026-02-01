@@ -3,5 +3,5 @@ from django.urls import path
 from . import consumers
 
 websocket_urlpatterns = [
-    path('agent/stream', consumers.VoiceAgentConsumer.as_asgi()),
+    path('agent/converse', consumers.VoiceAgentConsumer.as_asgi()),
 ]

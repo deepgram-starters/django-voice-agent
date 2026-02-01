@@ -13,6 +13,7 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'daphne',  # Must be first for Channels
+    'django.contrib.staticfiles',
     'channels',
     'corsheaders',
     'starter',
@@ -50,8 +51,9 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = '/'
-STATIC_ROOT = BASE_DIR / 'frontend' / 'dist'
+STATIC_URL = '/assets/'
+STATIC_ROOT = BASE_DIR / 'frontend' / 'dist' / 'assets'
+STATICFILES_DIRS = [BASE_DIR / 'frontend' / 'dist']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
