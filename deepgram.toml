@@ -34,6 +34,10 @@ command = "test -f .env || (echo '❌ .env not found' && exit 1)"
 command = ["./venv/bin/daphne -b 0.0.0.0 -p 8081 config.asgi:application", "cd frontend && corepack pnpm run dev -- --port 8080 --no-open"]
 parallel = true
 
+[update]
+command = "git submodule update --remote --merge"
+message = "Submodules updated"
+
 [clean]
 command = ["rm -rf venv", "rm -rf frontend/node_modules", "rm -rf frontend/dist", "find . -type d -name __pycache__ -exec rm -rf {} +"]
 message = "Build artifacts cleaned"
