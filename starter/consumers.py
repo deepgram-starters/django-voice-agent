@@ -22,7 +22,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         """Accept WebSocket connection and create Deepgram proxy"""
         await self.accept()
-        print("Client connected to /agent/converse")
+        print("Client connected to /api/voice-agent")
 
         try:
             # Connect to Deepgram Agent API
