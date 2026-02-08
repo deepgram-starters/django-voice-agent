@@ -21,10 +21,6 @@ message = "Dependencies installed"
 sample = "sample.env"
 output = ".env"
 
-[build]
-command = "cd frontend && pnpm build"
-message = "Frontend built"
-
 [check]
 command = ["git --version", "python3 --version", "pip3 --version"]
 
@@ -42,3 +38,8 @@ message = "Submodules updated"
 [clean]
 command = ["rm -rf venv", "rm -rf frontend/node_modules", "rm -rf frontend/dist", "find . -type d -name __pycache__ -exec rm -rf {} +"]
 message = "Build artifacts cleaned"
+
+# Eject frontend and contracts submodules for standalone development
+[eject-frontend]
+command = "make eject-frontend"
+message = "Frontend ejected successfully"
