@@ -32,7 +32,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY config/ ./config/
 COPY starter/ ./starter/
 COPY manage.py deepgram.toml sample.env ./
-COPY static/ ./static/
 
 # Copy built frontend
 COPY --from=frontend-builder /build/frontend/dist/ ./frontend/dist/
