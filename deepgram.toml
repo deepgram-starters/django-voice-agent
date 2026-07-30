@@ -6,7 +6,7 @@ repository = "https://github.com/deepgram-starters/django-voice-agent"
 useCase = "voice-agent"
 language = "python"
 framework = "django"
-sdk = "N/A"
+sdk = "deepgram-sdk"
 tags = ["voice-agent", "conversational-ai", "voice-ai", "voice-bot", "python", "django"]
 
 [install.pre]
