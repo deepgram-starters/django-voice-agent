@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from deepgram import AsyncDeepgramClient
 from deepgram.environment import DeepgramClientEnvironment
 from deepgram.core.unchecked_base_model import construct_type
+from deepgram.core.api_error import ApiError
 from deepgram.agent.v1.types import (
     AgentV1Settings,
     AgentV1UpdateSpeak,
@@ -47,6 +48,18 @@ def _build_client():
 
 
 deepgram = _build_client()
+
+
+def _safe_error_detail(e):
+    """Sanitize a Deepgram error before it reaches the browser or logs.
+
+    NEVER surface str(e): a deepgram-sdk ApiError stringifies its request
+    headers, which include Authorization: Token <api-key> — a bad connect
+    would otherwise leak the key to the browser and the server logs.
+    """
+    if isinstance(e, ApiError):
+        return f"Deepgram rejected the connection (HTTP {e.status_code})"
+    return f"Failed to connect to Deepgram ({type(e).__name__})"
 
 
 class VoiceAgentConsumer(AsyncWebsocketConsumer):
@@ -88,10 +101,11 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
             self.forward_task = asyncio.create_task(self.forward_from_deepgram())
 
         except Exception as error:
-            print(f"Error connecting to Deepgram: {error}")
+            detail = _safe_error_detail(error)
+            print(f"Error connecting to Deepgram: {detail}")
             await self.send(text_data=json.dumps({
                 "type": "Error",
-                "description": str(error),
+                "description": detail,
                 "code": "CONNECTION_FAILED"
             }))
             await self.close()
@@ -111,7 +125,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
             try:
                 await self._connection_cm.__aexit__(None, None, None)
             except Exception as e:
-                print(f"Error closing Deepgram connection: {e}")
+                print(f"Error closing Deepgram connection: {_safe_error_detail(e)}")
 
     async def receive(self, text_data=None, bytes_data=None):
         """Forward client messages to Deepgram: audio via send_media, JSON via typed sends."""
@@ -144,10 +158,11 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
             else:
                 print(f"Ignoring unknown client message type: {msg_type}")
         except Exception as error:
-            print(f"Error forwarding to Deepgram: {error}")
+            detail = _safe_error_detail(error)
+            print(f"Error forwarding to Deepgram: {detail}")
             await self.send(text_data=json.dumps({
                 "type": "Error",
-                "description": str(error),
+                "description": detail,
                 "code": "PROVIDER_ERROR"
             }))
 
@@ -166,7 +181,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
         except asyncio.CancelledError:
             pass
         except Exception as error:
-            print(f"Error forwarding from Deepgram: {error}")
+            print(f"Error forwarding from Deepgram: {_safe_error_detail(error)}")
         finally:
             # Close client connection when Deepgram closes (preserves original code).
             try:
