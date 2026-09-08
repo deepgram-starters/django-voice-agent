@@ -20,8 +20,13 @@ from deepgram.core.unchecked_base_model import construct_type
 from deepgram.core.api_error import ApiError
 from deepgram.agent.v1.types import (
     AgentV1Settings,
+    AgentV1SendFunctionCallResponse,
+    AgentV1KeepAlive,
+    AgentV1UpdateListen,
     AgentV1UpdateSpeak,
+    AgentV1UpdateThink,
     AgentV1UpdatePrompt,
+    AgentV1InjectAgentMessage,
     AgentV1InjectUserMessage,
 )
 from starter.views import SESSION_SECRET
@@ -147,10 +152,30 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
             msg_type = data.get("type")
             if msg_type == "Settings":
                 await self.connection.send_settings(construct_type(type_=AgentV1Settings, object_=data))
+            elif msg_type == "FunctionCallResponse":
+                await self.connection.send_function_call_response(
+                    construct_type(type_=AgentV1SendFunctionCallResponse, object_=data)
+                )
+            elif msg_type == "KeepAlive":
+                await self.connection.send_keep_alive(
+                    construct_type(type_=AgentV1KeepAlive, object_=data)
+                )
+            elif msg_type == "UpdateListen":
+                await self.connection.send_update_listen(
+                    construct_type(type_=AgentV1UpdateListen, object_=data)
+                )
             elif msg_type == "UpdateSpeak":
                 await self.connection.send_update_speak(construct_type(type_=AgentV1UpdateSpeak, object_=data))
+            elif msg_type == "UpdateThink":
+                await self.connection.send_update_think(
+                    construct_type(type_=AgentV1UpdateThink, object_=data)
+                )
             elif msg_type == "UpdatePrompt":
                 await self.connection.send_update_prompt(construct_type(type_=AgentV1UpdatePrompt, object_=data))
+            elif msg_type == "InjectAgentMessage":
+                await self.connection.send_inject_agent_message(
+                    construct_type(type_=AgentV1InjectAgentMessage, object_=data)
+                )
             elif msg_type == "InjectUserMessage":
                 await self.connection.send_inject_user_message(
                     construct_type(type_=AgentV1InjectUserMessage, object_=data)
@@ -175,9 +200,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
                 elif hasattr(message, "model_dump_json"):
                     await self.send(text_data=message.model_dump_json())
                 else:
-                    await self.send(text_data=json.dumps(
-                        {"type": getattr(message, "type", "Unknown")}
-                    ))
+                    await self.send(text_data=json.dumps(message))
         except asyncio.CancelledError:
             pass
         except Exception as error:
