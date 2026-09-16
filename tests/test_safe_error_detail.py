@@ -106,3 +106,40 @@ class SafeErrorDetailTests(unittest.TestCase):
                         "model": model,
                     }},
                 }], [json.loads(message) for message in sent])
+
+    def test_forward_from_deepgram_preserves_unmodeled_json_and_binary_frames(self):
+        known_frame = '{ "type" : "AgentAudioDone" }'
+        unknown_frame = (
+            '{  "type" : "FutureAgentEvent", "opaque" : "\\u2603", '
+            '"items" : [ 3, 2, 1 ] }'
+        )
+        binary_frame = b"\x00\xffagent-audio\x10"
+
+        class WebSocket:
+            async def __aiter__(self):
+                yield known_frame
+                yield unknown_frame
+                yield binary_frame
+
+        async def exercise():
+            forwarded = []
+            consumer = object.__new__(VoiceAgentConsumer)
+            consumer.connection = AsyncV1SocketClient(websocket=WebSocket())
+
+            async def send(text_data=None, bytes_data=None):
+                forwarded.append((text_data, bytes_data))
+
+            async def close(code=None):
+                pass
+
+            consumer.send = send
+            consumer.close = close
+            await consumer.forward_from_deepgram()
+            return forwarded
+
+        forwarded = asyncio.run(exercise())
+        self.assertEqual('{"type":"AgentAudioDone"}', forwarded[0][0])
+        self.assertEqual(unknown_frame.encode("utf-8"), forwarded[1][0].encode("utf-8"))
+        self.assertIsNone(forwarded[1][1])
+        self.assertEqual(binary_frame, forwarded[2][1])
+        self.assertIsNone(forwarded[2][0])

@@ -18,6 +18,7 @@ from deepgram import AsyncDeepgramClient
 from deepgram.environment import DeepgramClientEnvironment
 from deepgram.core.unchecked_base_model import construct_type
 from deepgram.core.api_error import ApiError
+from deepgram.agent.v1.socket_client import V1SocketClientResponse
 from deepgram.agent.v1.types import (
     AgentV1Settings,
     AgentV1SendFunctionCallResponse,
@@ -65,6 +66,16 @@ def _safe_error_detail(e):
     if isinstance(e, ApiError):
         return f"Deepgram rejected the connection (HTTP {e.status_code})"
     return f"Deepgram operation failed ({type(e).__name__})"
+
+
+async def _raw_deepgram_frames(connection):
+    """Yield the SDK websocket's original frames without its typed iterator."""
+    websocket = getattr(connection, "_websocket", None)
+    if websocket is None or not hasattr(websocket, "__aiter__"):
+        raise RuntimeError("Deepgram SDK connection does not expose an async websocket")
+
+    async for frame in websocket:
+        yield frame
 
 
 class VoiceAgentConsumer(AsyncWebsocketConsumer):
@@ -198,15 +209,30 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
             }))
 
     async def forward_from_deepgram(self):
-        """Forward Deepgram messages to the browser: bytes as binary, models as JSON."""
+        """Forward Deepgram frames, preserving unmodeled JSON exactly."""
         try:
-            async for message in self.connection:
-                if isinstance(message, (bytes, bytearray)):
-                    await self.send(bytes_data=bytes(message))
-                elif hasattr(message, "model_dump_json"):
+            # AsyncV1SocketClient.__aiter__ drops unsupported Agent events.  The
+            # SDK has no raw-frame API, so use its underlying websocket directly.
+            async for raw_message in _raw_deepgram_frames(self.connection):
+                if isinstance(raw_message, (bytes, bytearray)):
+                    await self.send(bytes_data=bytes(raw_message))
+                    continue
+
+                json_message = json.loads(raw_message)
+                try:
+                    message = construct_type(
+                        type_=V1SocketClientResponse,
+                        object_=json_message,
+                    )
+                except Exception:
+                    message = None
+
+                if hasattr(message, "model_dump_json"):
                     await self.send(text_data=message.model_dump_json())
                 else:
-                    await self.send(text_data=json.dumps(message))
+                    # Unknown events may be returned as dicts or rejected by the
+                    # generated union. In both cases, retain their original wire form.
+                    await self.send(text_data=raw_message)
         except asyncio.CancelledError:
             pass
         except Exception as error:
