@@ -64,7 +64,7 @@ def _safe_error_detail(e):
     """
     if isinstance(e, ApiError):
         return f"Deepgram rejected the connection (HTTP {e.status_code})"
-    return f"Failed to connect to Deepgram ({type(e).__name__})"
+    return f"Deepgram operation failed ({type(e).__name__})"
 
 
 class VoiceAgentConsumer(AsyncWebsocketConsumer):
@@ -161,6 +161,12 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
                     construct_type(type_=AgentV1KeepAlive, object_=data)
                 )
             elif msg_type == "UpdateListen":
+                provider = (data.get("listen") or {}).get("provider")
+                if isinstance(provider, dict) and "version" not in provider:
+                    # construct_type skips the SDK validator that normally infers this.
+                    provider["version"] = (
+                        "v2" if str(provider.get("model", "")).startswith("flux") else "v1"
+                    )
                 await self.connection.send_update_listen(
                     construct_type(type_=AgentV1UpdateListen, object_=data)
                 )
