@@ -2,6 +2,8 @@ import os
 import unittest
 import asyncio
 import json
+from pathlib import Path
+from urllib.parse import urlparse
 
 os.environ.setdefault("DEEPGRAM_API_KEY", "test-api-key")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -106,6 +108,39 @@ class SafeErrorDetailTests(unittest.TestCase):
                         "model": model,
                     }},
                 }], [json.loads(message) for message in sent])
+
+    def test_unknown_control_message_sends_browser_error(self):
+        async def exercise():
+            frames = []
+            consumer = object.__new__(VoiceAgentConsumer)
+            consumer.connection = object()
+
+            async def send(text_data=None, bytes_data=None):
+                frames.append((text_data, bytes_data))
+
+            consumer.send = send
+            await consumer.receive(text_data=json.dumps({"type": "FutureAgentEvent"}))
+            return frames
+
+        frames = asyncio.run(exercise())
+        self.assertEqual([({
+            "type": "Error",
+            "description": "Unsupported client message type",
+            "code": "UNSUPPORTED_MESSAGE_TYPE",
+        }, None)], [(json.loads(text_data), bytes_data) for text_data, bytes_data in frames])
+
+    def test_sample_env_deepgram_base_url_is_host_only(self):
+        sample_env = Path(__file__).parents[1] / "sample.env"
+        base_url = next(
+            line.split("=", 1)[1]
+            for line in sample_env.read_text().splitlines()
+            if line.startswith("# DEEPGRAM_BASE_URL=")
+        )
+        parsed = urlparse(base_url)
+
+        self.assertEqual("wss", parsed.scheme)
+        self.assertEqual("agent.deepgram.com", parsed.hostname)
+        self.assertEqual("", parsed.path)
 
     def test_forward_from_deepgram_preserves_unmodeled_json_and_binary_frames(self):
         known_frame = '{ "type" : "AgentAudioDone" }'

@@ -85,7 +85,7 @@ Frontend: `cd frontend && corepack pnpm install`
 ## Customization Guide
 
 ### How the Agent Works
-The backend is a WebSocket dispatcher between the browser and Deepgram's Agent API. It forwards binary microphone audio and these browser JSON messages through the matching SDK sender: `Settings`, `FunctionCallResponse`, `KeepAlive`, `UpdateListen`, `UpdateSpeak`, `UpdateThink`, `UpdatePrompt`, `InjectAgentMessage`, and `InjectUserMessage`. It logs and drops unsupported message types.
+The backend is a WebSocket dispatcher between the browser and Deepgram's Agent API. It forwards binary microphone audio and these browser JSON messages through the matching SDK sender: `Settings`, `FunctionCallResponse`, `KeepAlive`, `UpdateListen`, `UpdateSpeak`, `UpdateThink`, `UpdatePrompt`, `InjectAgentMessage`, and `InjectUserMessage`. Unsupported message types receive a browser `Error` response.
 
 ### Agent Settings (sent from frontend)
 The frontend sends a `Settings` message after connecting:
@@ -117,6 +117,8 @@ The frontend sends a `Settings` message after connecting:
 | **Think** (LLM) | `agent.think.provider.type` | `open_ai`, `anthropic` | LLM provider |
 | **Think** (LLM) | `agent.think.provider.model` | `gpt-4o-mini`, `gpt-4o`, etc. | LLM model |
 | **Prompt** | `agent.think.prompt` | Any system prompt | Agent personality/behavior |
+
+For Flux listening models, use the v2 provider shape: `{"type":"deepgram","version":"v2","model":"flux-general-en"}`. The dispatcher also adds `version: "v2"` for an omitted version on `flux-*` models; non-Flux models use `v1`.
 
 ### Live Updates (no reconnect needed)
 The frontend can update these settings mid-conversation:
@@ -175,7 +177,7 @@ The frontend is a git submodule from `deepgram-starters/voice-agent-html`. To mo
 | Variable | Required | Default | Purpose |
 |----------|----------|---------|---------|
 | `DEEPGRAM_API_KEY` | Yes | — | Deepgram API key |
-| `DEEPGRAM_BASE_URL` | No | Deepgram Agent API endpoint | Override the Deepgram Agent API endpoint, such as a staging host |
+| `DEEPGRAM_BASE_URL` | No | `wss://agent.deepgram.com` | Override the Deepgram Agent API host, such as a staging host (host only, no path) |
 | `PORT` | No | `8081` | Backend server port |
 | `HOST` | No | `0.0.0.0` | Backend bind address |
 | `SESSION_SECRET` | No | — | JWT signing secret (production) |
@@ -197,8 +199,8 @@ chore(deps): update frontend submodule
 # Run conformance tests (requires app to be running)
 make test
 
-# Run the browser-safe error-detail regression test
-python -m unittest discover -s tests
+# Run the SDK bridge regression tests
+./venv/bin/python -m unittest discover -s tests
 
 # Manual endpoint check
 curl -sf http://localhost:8081/api/metadata | python3 -m json.tool

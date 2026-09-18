@@ -40,7 +40,7 @@ if not API_KEY:
 
 
 # One async SDK client, reused across connections; the browser never sees the API key.
-# DEEPGRAM_BASE_URL overrides the default agent endpoint (e.g. a staging host).
+# DEEPGRAM_BASE_URL overrides the default agent host (e.g. a staging host; no path).
 def _build_client():
     base_url = os.environ.get("DEEPGRAM_BASE_URL")
     if base_url:
@@ -162,6 +162,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
 
             msg_type = data.get("type")
             if msg_type == "Settings":
+                # The SDK adds a default listen provider version when the browser omits it.
                 await self.connection.send_settings(construct_type(type_=AgentV1Settings, object_=data))
             elif msg_type == "FunctionCallResponse":
                 await self.connection.send_function_call_response(
@@ -199,6 +200,11 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
                 )
             else:
                 print(f"Ignoring unknown client message type: {msg_type}")
+                await self.send(text_data=json.dumps({
+                    "type": "Error",
+                    "description": "Unsupported client message type",
+                    "code": "UNSUPPORTED_MESSAGE_TYPE",
+                }))
         except Exception as error:
             detail = _safe_error_detail(error)
             print(f"Error forwarding to Deepgram: {detail}")
