@@ -5,4 +5,5 @@ django-cors-headers==4.3.1
 PyJWT==2.13.0
 python-dotenv==1.2.2
 toml==0.10.2
-websockets==16.0.0
+
+deepgram-sdk>=7.7.0,<7.10.0
