@@ -109,6 +109,36 @@ class SafeErrorDetailTests(unittest.TestCase):
                     }},
                 }], [json.loads(message) for message in sent])
 
+    def test_settings_serializes_provider_version_to_deepgram(self):
+        class WebSocket:
+            def __init__(self):
+                self.sent = []
+
+            async def send(self, message):
+                self.sent.append(message)
+
+        async def exercise(model):
+            websocket = WebSocket()
+            consumer = object.__new__(VoiceAgentConsumer)
+            consumer.connection = AsyncV1SocketClient(websocket=websocket)
+            await consumer.receive(text_data=json.dumps({
+                "type": "Settings",
+                "agent": {"listen": {"provider": {"type": "deepgram", "model": model}}},
+            }))
+            return websocket.sent
+
+        for model, version in (("nova-3", "v1"), ("flux-general-en", "v2")):
+            with self.subTest(model=model):
+                sent = asyncio.run(exercise(model))
+                self.assertEqual([{
+                    "type": "Settings",
+                    "agent": {"listen": {"provider": {
+                        "version": version,
+                        "type": "deepgram",
+                        "model": model,
+                    }}},
+                }], [json.loads(message) for message in sent])
+
     def test_unknown_control_message_sends_browser_error(self):
         async def exercise():
             frames = []

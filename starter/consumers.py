@@ -68,6 +68,14 @@ def _safe_error_detail(e):
     return f"Deepgram operation failed ({type(e).__name__})"
 
 
+def _normalize_listen_provider_version(provider):
+    """Add the Agent API provider version skipped by construct_type."""
+    if isinstance(provider, dict) and "version" not in provider:
+        provider["version"] = (
+            "v2" if str(provider.get("model", "")).startswith("flux-") else "v1"
+        )
+
+
 async def _raw_deepgram_frames(connection):
     """Yield the SDK websocket's original frames without its typed iterator."""
     websocket = getattr(connection, "_websocket", None)
@@ -162,7 +170,8 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
 
             msg_type = data.get("type")
             if msg_type == "Settings":
-                # The SDK adds a default listen provider version when the browser omits it.
+                provider = ((data.get("agent") or {}).get("listen") or {}).get("provider")
+                _normalize_listen_provider_version(provider)
                 await self.connection.send_settings(construct_type(type_=AgentV1Settings, object_=data))
             elif msg_type == "FunctionCallResponse":
                 await self.connection.send_function_call_response(
@@ -174,11 +183,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
                 )
             elif msg_type == "UpdateListen":
                 provider = (data.get("listen") or {}).get("provider")
-                if isinstance(provider, dict) and "version" not in provider:
-                    # construct_type skips the SDK validator that normally infers this.
-                    provider["version"] = (
-                        "v2" if str(provider.get("model", "")).startswith("flux") else "v1"
-                    )
+                _normalize_listen_provider_version(provider)
                 await self.connection.send_update_listen(
                     construct_type(type_=AgentV1UpdateListen, object_=data)
                 )
