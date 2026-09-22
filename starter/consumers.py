@@ -204,7 +204,7 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
                     construct_type(type_=AgentV1InjectUserMessage, object_=data)
                 )
             else:
-                print(f"Ignoring unknown client message type: {msg_type}")
+                print(f"Rejecting unsupported client message type: {msg_type}")
                 await self.send(text_data=json.dumps({
                     "type": "Error",
                     "description": "Unsupported client message type",
