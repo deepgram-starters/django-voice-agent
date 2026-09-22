@@ -95,11 +95,18 @@ The frontend sends a `Settings` message after connecting:
   "type": "Settings",
   "audio": {
     "input": { "encoding": "linear16", "sample_rate": 16000 },
-    "output": { "encoding": "linear16", "sample_rate": 16000 }
+    "output": { "encoding": "linear16", "sample_rate": 24000 }
   },
   "agent": {
-    "listen": { "provider": { "type": "deepgram", "model": "nova-3" } },
-    "speak": { "provider": { "type": "deepgram", "model": "aura-2-thalia-en" } },
+    "listen": {
+      "provider": {
+        "type": "deepgram",
+        "version": "v2",
+        "model": "flux-general-multi",
+        "language_hint": ["en", "es"]
+      }
+    },
+    "speak": { "provider": { "type": "deepgram", "model": "aura-2-carina-es" } },
     "think": {
       "provider": { "type": "open_ai", "model": "gpt-4o-mini" },
       "prompt": "You are a helpful assistant."
@@ -112,8 +119,8 @@ The frontend sends a `Settings` message after connecting:
 
 | Component | Field | Options | Effect |
 |-----------|-------|---------|--------|
-| **Listen** (STT) | `agent.listen.provider.model` | `nova-3`, `nova-2` | Speech recognition model |
-| **Speak** (TTS) | `agent.speak.provider.model` | Any `aura-*` voice | Agent's voice |
+| **Listen** (STT) | `agent.listen.provider.model` | `flux-general-en`, `flux-general-multi`, `nova-3`, `nova-2` | Speech recognition model |
+| **Speak** (TTS) | `agent.speak.provider.model` | Any `aura-2-*` voice | Agent's voice |
 | **Think** (LLM) | `agent.think.provider.type` | `open_ai`, `anthropic` | LLM provider |
 | **Think** (LLM) | `agent.think.provider.model` | `gpt-4o-mini`, `gpt-4o`, etc. | LLM model |
 | **Prompt** | `agent.think.prompt` | Any system prompt | Agent personality/behavior |
@@ -169,8 +176,8 @@ The frontend is a git submodule from `deepgram-starters/voice-agent-html`. To mo
 ### Adding a UI Control for a New Feature
 1. Add the HTML element in `frontend/index.html` (input, checkbox, dropdown, etc.)
 2. Read the value in `frontend/main.js` when making the API call or opening the WebSocket
-3. Pass it as a query parameter in the WebSocket URL
-4. Handle it in the backend `starter/consumers.py` — read the param and pass it to the Deepgram API
+3. Include it in the initial Settings message or a supported Agent control message
+4. Handle it in `starter/consumers.py` using the matching SDK sender
 
 ## Environment Variables
 
