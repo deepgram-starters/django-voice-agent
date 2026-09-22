@@ -14,7 +14,7 @@ django.setup()
 
 from deepgram.core.api_error import ApiError
 from deepgram.agent.v1.client import AsyncV1SocketClient
-from starter.consumers import _safe_error_detail
+from starter.consumers import _raw_deepgram_frames, _safe_error_detail
 from starter.consumers import VoiceAgentConsumer
 
 
@@ -208,3 +208,11 @@ class SafeErrorDetailTests(unittest.TestCase):
         self.assertIsNone(forwarded[1][1])
         self.assertEqual(binary_frame, forwarded[2][1])
         self.assertIsNone(forwarded[2][0])
+
+    def test_missing_private_transport_fails_loudly(self):
+        async def exercise():
+            async for _ in _raw_deepgram_frames(object()):
+                pass
+
+        with self.assertRaisesRegex(RuntimeError, "does not expose an async websocket"):
+            asyncio.run(exercise())

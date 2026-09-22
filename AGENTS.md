@@ -67,7 +67,7 @@ make init
 
 ## Dependencies
 
-- **Backend:** `requirements.txt` — Django uses Daphne (ASGI) for WebSocket support. REST starters use views.py, WebSocket starters use consumers.py.
+- **Backend:** `requirements.txt` — Django uses Daphne (ASGI) for WebSocket support and `deepgram-sdk>=7.7.0,<7.10.0`. REST starters use views.py, WebSocket starters use consumers.py.
 - **Frontend:** `frontend/package.json` — Vite dev server
 - **Submodules:** `frontend/` (voice-agent-html), `contracts/` (starter-contracts)
 
@@ -86,6 +86,8 @@ Frontend: `cd frontend && corepack pnpm install`
 
 ### How the Agent Works
 The backend is a WebSocket dispatcher between the browser and Deepgram's Agent API. It forwards binary microphone audio and these browser JSON messages through the matching SDK sender: `Settings`, `FunctionCallResponse`, `KeepAlive`, `UpdateListen`, `UpdateSpeak`, `UpdateThink`, `UpdatePrompt`, `InjectAgentMessage`, and `InjectUserMessage`. Unsupported message types receive a browser `Error` response.
+
+Responses use the SDK connection, but the bridge reads its guarded private `_websocket` transport to preserve unknown Agent events exactly. The public SDK iterator drops unsupported JSON events in the supported `>=7.7.0,<7.10.0` range. Do not replace this raw-frame path with the typed iterator until the SDK provides a public lossless iterator; it raises a clear runtime error if the private transport is unavailable.
 
 ### Agent Settings (sent from frontend)
 The frontend sends a `Settings` message after connecting:

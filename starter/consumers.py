@@ -77,7 +77,7 @@ def _normalize_listen_provider_version(provider):
 
 
 async def _raw_deepgram_frames(connection):
-    """Yield the SDK websocket's original frames without its typed iterator."""
+    """Yield original frames because the public SDK iterator drops unknown JSON events."""
     websocket = getattr(connection, "_websocket", None)
     if websocket is None or not hasattr(websocket, "__aiter__"):
         raise RuntimeError("Deepgram SDK connection does not expose an async websocket")
@@ -222,8 +222,9 @@ class VoiceAgentConsumer(AsyncWebsocketConsumer):
     async def forward_from_deepgram(self):
         """Forward Deepgram frames, preserving unmodeled JSON exactly."""
         try:
-            # AsyncV1SocketClient.__aiter__ drops unsupported Agent events.  The
-            # SDK has no raw-frame API, so use its underlying websocket directly.
+            # AsyncV1SocketClient.__aiter__ drops unsupported Agent events in the
+            # supported SDK range. The SDK has no public raw-frame API, so preserve
+            # browser compatibility through the guarded underlying websocket.
             async for raw_message in _raw_deepgram_frames(self.connection):
                 if isinstance(raw_message, (bytes, bytearray)):
                     await self.send(bytes_data=bytes(raw_message))
