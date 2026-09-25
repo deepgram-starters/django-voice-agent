@@ -14,7 +14,7 @@ django.setup()
 
 from deepgram.core.api_error import ApiError
 from deepgram.agent.v1.client import AsyncV1SocketClient
-from starter.consumers import _raw_deepgram_frames, _safe_error_detail
+from starter.consumers import _safe_error_detail
 from starter.consumers import VoiceAgentConsumer
 
 
@@ -203,16 +203,25 @@ class SafeErrorDetailTests(unittest.TestCase):
             return forwarded
 
         forwarded = asyncio.run(exercise())
-        self.assertEqual('{"type":"AgentAudioDone"}', forwarded[0][0])
-        self.assertEqual(unknown_frame.encode("utf-8"), forwarded[1][0].encode("utf-8"))
+        self.assertEqual({"type": "AgentAudioDone"}, json.loads(forwarded[0][0]))
+        self.assertEqual(json.loads(unknown_frame), json.loads(forwarded[1][0]))
         self.assertIsNone(forwarded[1][1])
         self.assertEqual(binary_frame, forwarded[2][1])
         self.assertIsNone(forwarded[2][0])
 
-    def test_missing_private_transport_fails_loudly(self):
-        async def exercise():
-            async for _ in _raw_deepgram_frames(object()):
-                pass
+    def test_public_iterator_preserves_unmodeled_json_frames(self):
+        unknown_frame = '{"type":"FutureAgentEvent","opaque":true}'
+        binary_frame = b"agent-audio"
 
-        with self.assertRaisesRegex(RuntimeError, "does not expose an async websocket"):
-            asyncio.run(exercise())
+        class WebSocket:
+            async def __aiter__(self):
+                yield unknown_frame
+                yield binary_frame
+
+        async def exercise():
+            received = []
+            async for message in AsyncV1SocketClient(websocket=WebSocket()):
+                received.append(message)
+            return received
+
+        self.assertEqual([json.loads(unknown_frame), binary_frame], asyncio.run(exercise()))
