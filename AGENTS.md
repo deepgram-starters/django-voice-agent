@@ -14,7 +14,7 @@ Django demo app for Deepgram Voice Agent.
 
 | File | Purpose |
 |------|---------|
-| `starter/consumers.py` | Main backend — API endpoints and WebSocket proxy |
+| `starter/consumers.py` | Main backend — API endpoints and Deepgram WebSocket dispatcher |
 | `deepgram.toml` | Metadata, lifecycle commands, tags |
 | `Makefile` | Standardized build/run targets |
 | `sample.env` | Environment variable template |
@@ -67,7 +67,7 @@ make init
 
 ## Dependencies
 
-- **Backend:** `requirements.txt` — Django uses Daphne (ASGI) for WebSocket support. REST starters use views.py, WebSocket starters use consumers.py.
+- **Backend:** `requirements.txt` — Django uses Daphne (ASGI) for WebSocket support and `deepgram-sdk>=7.7.0,<8.0.0`. REST starters use views.py, WebSocket starters use consumers.py.
 - **Frontend:** `frontend/package.json` — Vite dev server
 - **Submodules:** `frontend/` (voice-agent-html), `contracts/` (starter-contracts)
 
@@ -85,7 +85,9 @@ Frontend: `cd frontend && corepack pnpm install`
 ## Customization Guide
 
 ### How the Agent Works
-The backend is a **pure WebSocket proxy** — it forwards messages between the browser and Deepgram's Agent API. All agent configuration happens via JSON messages from the frontend.
+The backend is a WebSocket dispatcher between the browser and Deepgram's Agent API. It forwards binary microphone audio and these browser JSON messages through the matching SDK sender: `Settings`, `FunctionCallResponse`, `KeepAlive`, `UpdateListen`, `UpdateSpeak`, `UpdateThink`, `UpdatePrompt`, `InjectAgentMessage`, and `InjectUserMessage`. Unsupported message types receive a browser `Error` response.
+
+Responses use the SDK's public Agent iterator. It returns modeled events as SDK models and unmodeled JSON events as dictionaries; the dispatcher forwards both to the browser without discarding fields.
 
 ### Agent Settings (sent from frontend)
 The frontend sends a `Settings` message after connecting:
@@ -95,11 +97,18 @@ The frontend sends a `Settings` message after connecting:
   "type": "Settings",
   "audio": {
     "input": { "encoding": "linear16", "sample_rate": 16000 },
-    "output": { "encoding": "linear16", "sample_rate": 16000 }
+    "output": { "encoding": "linear16", "sample_rate": 24000 }
   },
   "agent": {
-    "listen": { "provider": { "type": "deepgram", "model": "nova-3" } },
-    "speak": { "provider": { "type": "deepgram", "model": "aura-2-thalia-en" } },
+    "listen": {
+      "provider": {
+        "type": "deepgram",
+        "version": "v2",
+        "model": "flux-general-multi",
+        "language_hint": ["en", "es"]
+      }
+    },
+    "speak": { "provider": { "type": "deepgram", "model": "aura-2-carina-es" } },
     "think": {
       "provider": { "type": "open_ai", "model": "gpt-4o-mini" },
       "prompt": "You are a helpful assistant."
@@ -112,15 +121,17 @@ The frontend sends a `Settings` message after connecting:
 
 | Component | Field | Options | Effect |
 |-----------|-------|---------|--------|
-| **Listen** (STT) | `agent.listen.provider.model` | `nova-3`, `nova-2` | Speech recognition model |
-| **Speak** (TTS) | `agent.speak.provider.model` | Any `aura-*` voice | Agent's voice |
+| **Listen** (STT) | `agent.listen.provider.model` | `flux-general-en`, `flux-general-multi`, `nova-3`, `nova-2` | Speech recognition model |
+| **Speak** (TTS) | `agent.speak.provider.model` | Any `aura-2-*` voice | Agent's voice |
 | **Think** (LLM) | `agent.think.provider.type` | `open_ai`, `anthropic` | LLM provider |
 | **Think** (LLM) | `agent.think.provider.model` | `gpt-4o-mini`, `gpt-4o`, etc. | LLM model |
 | **Prompt** | `agent.think.prompt` | Any system prompt | Agent personality/behavior |
 
+For Flux listening models, use the v2 provider shape: `{"type":"deepgram","version":"v2","model":"flux-general-en"}`. The dispatcher also adds `version: "v2"` for an omitted version on `flux-*` models; non-Flux models use `v1`.
+
 ### Live Updates (no reconnect needed)
 The frontend can update these settings mid-conversation:
-- `{ "type": "UpdateSpeak", "model": "aura-2-luna-en" }` — Change voice
+- `{ "type": "UpdateSpeak", "speak": { "provider": { "type": "deepgram", "model": "aura-2-luna-en" } } }` — Change voice
 - `{ "type": "UpdatePrompt", "prompt": "New instructions..." }` — Change prompt
 - `{ "type": "InjectUserMessage", "content": "text" }` — Send text as user
 
@@ -167,14 +178,15 @@ The frontend is a git submodule from `deepgram-starters/voice-agent-html`. To mo
 ### Adding a UI Control for a New Feature
 1. Add the HTML element in `frontend/index.html` (input, checkbox, dropdown, etc.)
 2. Read the value in `frontend/main.js` when making the API call or opening the WebSocket
-3. Pass it as a query parameter in the WebSocket URL
-4. Handle it in the backend `starter/consumers.py` — read the param and pass it to the Deepgram API
+3. Include it in the initial Settings message or a supported Agent control message
+4. Handle it in `starter/consumers.py` using the matching SDK sender
 
 ## Environment Variables
 
 | Variable | Required | Default | Purpose |
 |----------|----------|---------|---------|
 | `DEEPGRAM_API_KEY` | Yes | — | Deepgram API key |
+| `DEEPGRAM_BASE_URL` | No | `wss://agent.deepgram.com` | Override the Deepgram Agent API host, such as a staging host (host only, no path) |
 | `PORT` | No | `8081` | Backend server port |
 | `HOST` | No | `0.0.0.0` | Backend bind address |
 | `SESSION_SECRET` | No | — | JWT signing secret (production) |
@@ -195,6 +207,9 @@ chore(deps): update frontend submodule
 ```bash
 # Run conformance tests (requires app to be running)
 make test
+
+# Run the SDK bridge regression tests
+./venv/bin/python -m unittest discover -s tests
 
 # Manual endpoint check
 curl -sf http://localhost:8081/api/metadata | python3 -m json.tool
